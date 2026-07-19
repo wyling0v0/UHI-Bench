@@ -5,10 +5,7 @@ Across Data Sources, Cities, and Climate Regimes**.
 
 This repository contains experiment runners, common data loaders, and baseline
 implementations. The benchmark dataset is distributed separately on Hugging Face:
-<https://huggingface.co/datasets/WyLing0v0/uhi-bench>. This code repository is
-not a dataset mirror and is not intended to position the dataset as a
-foundation-model training corpus. Foundation-model scripts are included only as
-optional benchmark baselines.
+<https://huggingface.co/datasets/WyLing0v0/uhi-bench>.
 
 ## Repository Layout
 
