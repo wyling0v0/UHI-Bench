@@ -1,0 +1,7 @@
+# Optional dependencies for Chronos / TimesFM / MOIRAI benchmark baselines.
+huggingface_hub
+transformers
+accelerate
+chronos-forecasting
+timesfm
+uni2ts
