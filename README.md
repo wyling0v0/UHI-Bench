@@ -18,6 +18,8 @@ implementations. The benchmark dataset is distributed separately on Hugging Face
 - `2c/`: dual-source UHI forecasting.
 - `2d/`: driver attribution and mechanism-stability summaries.
 - `3/`: source-set transfer and directed climate-pair transfer.
+- `data_pipeline/`: public static-feature construction and rural reference-ring
+  selection utilities.
 
 Large data files, raw source exports, generated caches, figures, and experiment
 outputs are intentionally excluded from this GitHub release.
@@ -67,6 +69,12 @@ pip install -r requirements-fm.txt
 
 Some optional model packages can be version-sensitive; the non-FM benchmark
 scripts do not require them.
+
+Optional data-construction utilities require additional geospatial packages:
+
+```bash
+pip install -r requirements-pipeline.txt
+```
 
 ## License
 
