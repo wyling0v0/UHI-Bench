@@ -1,7 +1,7 @@
 """Path configuration for the public UHI-Bench code release.
 
 Set ``UHI_BENCH_DATA`` to the root of the released dataset, for example a
-local clone/download of https://huggingface.co/datasets/WyLing0v0/uhi-bench.
+local clone/download of https://anonymous-hf.com/a/ybz41u8gi970/.
 If the variable is not set, the code tries common local locations next to this
 repository.
 """
