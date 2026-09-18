@@ -5,7 +5,7 @@ Across Data Sources, Cities, and Climate Regimes**.
 
 This repository contains experiment runners, common data loaders, and baseline
 implementations. The benchmark dataset is distributed separately on Hugging Face:
-<https://huggingface.co/datasets/WyLing0v0/uhi-bench>.
+<https://anonymous-hf.com/a/ybz41u8gi970/>.
 
 ## Repository Layout
 
@@ -31,7 +31,7 @@ directory:
 
 ```bash
 git lfs install
-git clone https://huggingface.co/datasets/WyLing0v0/uhi-bench /path/to/uhi-bench-data
+git clone https://anonymous-hf.com/a/ybz41u8gi970/ /path/to/uhi-bench-data
 export UHI_BENCH_DATA=/path/to/uhi-bench-data
 ```
 
