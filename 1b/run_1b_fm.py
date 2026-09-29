@@ -9,9 +9,9 @@ prior).
 
 Protocol (aligned with run_1b_classify.py):
   * series    : city-MEAN hourly UHI scalar (Ta via HOSTRADA, LST via lstuhi_1km).
-  * label     : label_extreme(series) over 2015-2025 (P95 + >=3h run), identical
-                to the other baselines' ground truth.
-  * split     : train <=2022 / test >=2023 (same masks).
+  * label     : P95 is fitted on 2015-2022 only, then frozen; above-threshold
+                runs are labeled separately on each side of the split.
+  * split     : 2015-2022 train / 2023-2025 evaluation.
   * FM detect : forecast yhat(t) 1-step-ahead from context s[t-168:t]; predict
                 "extreme" iff yhat(t) > thr, where thr = train-period (<=2022)
                 P95 of the *actual* UHI values. This is the direct FM analog of
@@ -50,7 +50,7 @@ BENCH = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BENCH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.paths import CACHE_ROOT, ERA5_BASE, LST_BASE, MODEL_DERIVED_TA_BASE, STATIC_BASE, TA_BASE  # noqa: E402
-from run_1b import lst_city_series, ta_city_series, label_extreme  # noqa: E402
+from run_1b import label_extreme_by_split, lst_city_series, ta_city_series  # noqa: E402
 
 ERA5_CITY_CACHE = CACHE_ROOT / "1c_era5_city_mean"
 
@@ -197,14 +197,15 @@ def build_case(uhi: pd.Series, era5: pd.DataFrame | None,
     s_raw = uhi.sort_index()
     idx = s_raw.index
     vals = s_raw.values.astype(np.float32)
-    med = float(np.nanmedian(vals)) if np.isfinite(vals).any() else 0.0
-    s = np.where(np.isfinite(vals), vals, med).astype(np.float32)         # filled
     yrs = idx.year.values
     hrs = idx.hour.values
     tr = yrs <= TRAIN_END
     te = yrs >= TRAIN_END + 1
-    # ground-truth label (full-data P95 + run), identical convention to classify
-    lab, _ = label_extreme(s_raw)
+    train_values = vals[tr]
+    med = float(np.nanmedian(train_values)) if np.isfinite(train_values).any() else 0.0
+    s = np.where(np.isfinite(vals), vals, med).astype(np.float32)         # filled
+    # P95 is fitted on training years; runs cannot cross the split boundary.
+    lab, _ = label_extreme_by_split(s_raw, train_end=TRAIN_END)
     y = lab.values.astype(int)
     # detection threshold: train-period P95 of actual UHI (NaN-aware), no leakage
     thr = float(np.nanpercentile(vals[tr], 95))
@@ -222,7 +223,9 @@ def build_case(uhi: pd.Series, era5: pd.DataFrame | None,
     inc_static = config in ("static", "meteo_static") and static_vec is not None
     blocks = []
     if inc_meteo:
-        e = era5.reindex(idx).fillna(era5.median()).to_numpy(dtype=np.float32)
+        e_df = era5.reindex(idx)
+        train_medians = e_df.iloc[np.flatnonzero(tr)].median()
+        e = e_df.fillna(train_medians).fillna(0.0).to_numpy(dtype=np.float32)
         mu = e[tr].mean(axis=0, keepdims=True)
         sd = e[tr].std(axis=0, keepdims=True) + 1e-6
         blocks.append(((e - mu) / sd).astype(np.float32))

@@ -17,7 +17,12 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from run_1b import lst_city_series, ta_city_series, label_extreme, DE_CITIES
+from run_1b import (
+    DE_CITIES,
+    label_extreme_by_split,
+    lst_city_series,
+    ta_city_series,
+)
 from common.paths import CACHE_ROOT, ERA5_BASE, STATIC_BASE
 import xgboost as xgb
 from sklearn.metrics import f1_score
@@ -124,17 +129,22 @@ def era5_city_series(city, years):
 def build_feats(uhi, era5, label, static_vec=None, train_years_end=2022):
     """Return config -> (Xtr,ytr,Xte,yte,day_te)."""
     s = uhi.sort_index()
+    yrs = s.index.year.values
+    tr = yrs <= train_years_end
+    train_values = s.values[tr]
+    fill = float(np.nanmedian(train_values)) if np.isfinite(train_values).any() else 0.0
     ok = np.isfinite(s.values)
-    s = pd.Series(np.where(ok, s.values, np.nanmedian(s.values)), index=s.index)
+    s = pd.Series(np.where(ok, s.values, fill), index=s.index)
     hours = s.index.hour.values
     doy = s.index.dayofyear.values
-    yrs = s.index.year.values
     # lag features
-    lag_feats = np.stack([s.shift(L).fillna(s.median()).values for L in LAGS], axis=1)
+    lag_feats = np.stack([s.shift(L).fillna(fill).values for L in LAGS], axis=1)
     seas = np.stack([hours, np.sin(2*np.pi*doy/365), np.cos(2*np.pi*doy/365)], axis=1)
     X1 = np.concatenate([lag_feats, seas], axis=1)              # Layer1
     if era5 is not None:
-        e = era5.reindex(s.index).fillna(era5.median())
+        e = era5.reindex(s.index)
+        train_medians = e.iloc[np.flatnonzero(tr)].median()
+        e = e.fillna(train_medians).fillna(0.0)
         X2 = np.concatenate([X1, e.values], axis=1)             # +meteo
     else:
         X2 = X1
@@ -144,7 +154,6 @@ def build_feats(uhi, era5, label, static_vec=None, train_years_end=2022):
         matrices["static"] = np.concatenate([X1, sta], axis=1)
         matrices["meteo_static"] = np.concatenate([X2, sta], axis=1)
     y = label.values.astype(int)
-    tr = yrs <= train_years_end
     te = yrs >= train_years_end + 1
     day_all = (hours >= 7) & (hours <= 17)
     day_te = day_all[te]              # restrict to test subset (len = sum(te))
@@ -190,13 +199,15 @@ def run_stat_baselines(uhi, label, train_years_end=2022):
     Returns {name: {overall,day,night}}.
     """
     s = uhi.sort_index()
-    vals = np.where(np.isfinite(s.values), s.values, np.nanmedian(s.values))
+    yrs = s.index.year.values
+    tr = yrs <= train_years_end
+    train_values = s.values[tr]
+    fill = float(np.nanmedian(train_values)) if np.isfinite(train_values).any() else 0.0
+    vals = np.where(np.isfinite(s.values), s.values, fill)
     s = pd.Series(vals, index=s.index)
     hrs = s.index.hour.values
-    yrs = s.index.year.values
     y = label.values.astype(int)
-    lag1 = s.shift(1).fillna(s.median()).values
-    tr = yrs <= train_years_end
+    lag1 = s.shift(1).fillna(fill).values
     te = yrs >= train_years_end + 1
     day_all = (hrs >= 7) & (hrs <= 17)
     day_te = day_all[te]
@@ -248,16 +259,21 @@ def run_ocsvm(Xtr, ytr, Xte, yte, day_te):
 
 
 def build_sequences(uhi, era5, label, static_vec=None, L=24, train_years_end=2022):
-    """Sliding windows for LSTM classifier. input [N_win, L, F], target extreme(t)."""
+    """Sliding windows ending at t-1, with the extreme label at t."""
     import torch
     s = uhi.sort_index()
-    s = pd.Series(np.where(np.isfinite(s.values), s.values, np.nanmedian(s.values)), index=s.index)
     hrs = s.index.hour.values; doy = s.index.dayofyear.values; yrs = s.index.year.values
+    tr_hours = yrs <= train_years_end
+    train_values = s.values[tr_hours]
+    fill = float(np.nanmedian(train_values)) if np.isfinite(train_values).any() else 0.0
+    s = pd.Series(np.where(np.isfinite(s.values), s.values, fill), index=s.index)
     seas = np.stack([hrs/23, np.sin(2*np.pi*doy/365), np.cos(2*np.pi*doy/365)], axis=1)
     uhi_v = s.values[:, None]
     feat1 = np.concatenate([uhi_v, seas], axis=1)         # [T, 4]
     if era5 is not None:
-        e = era5.reindex(s.index).fillna(era5.median()).values
+        e = era5.reindex(s.index)
+        train_medians = e.iloc[np.flatnonzero(tr_hours)].median()
+        e = e.fillna(train_medians).fillna(0.0).values
         feat2 = np.concatenate([feat1, e], axis=1)
     else:
         feat2 = feat1
@@ -272,9 +288,10 @@ def build_sequences(uhi, era5, label, static_vec=None, L=24, train_years_end=202
     out = {}
     for name, feat in features.items():
         Xw = np.stack([feat[i:i+L] for i in starts])          # [N,L,F]
-        yw = y[starts + L - 1]                                 # extreme at last step
-        yr = yrs[starts + L - 1]
-        day_win = day_all[starts + L - 1]
+        target_pos = starts + L
+        yw = y[target_pos]                                      # predict next hour
+        yr = yrs[target_pos]
+        day_win = day_all[target_pos]
         tr = yr <= train_years_end; te = yr >= train_years_end + 1
         out[name] = (torch.from_numpy(Xw[tr]).float(), yw[tr],
                      torch.from_numpy(Xw[te]).float(), yw[te], day_win[te])
@@ -367,7 +384,7 @@ def main():
             if uhi is None:
                 continue
             era5 = era5_city_series(city, a.years)
-            lab, _ = label_extreme(uhi)
+            lab, _ = label_extreme_by_split(uhi, train_end=2022)
             feats = build_feats(uhi, era5, lab, static_vec=static_vec)
             row = {}
             existing = res.setdefault(city, {}).setdefault(mod, {})

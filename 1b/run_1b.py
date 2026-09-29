@@ -161,9 +161,10 @@ def _pixel_mean(arr, dense: bool, chunk: int = 512):
     return vals
 
 
-def label_extreme(series, pct=95, min_run=3):
-    """Boolean series: extreme iff value > P95 AND in a run of ≥ min_run above-threshold hours."""
-    thr = np.nanpercentile(series.values, pct)
+def label_extreme(series, pct=95, min_run=3, threshold=None):
+    """Label above-threshold runs, optionally using a pre-fitted threshold."""
+    thr = (float(threshold) if threshold is not None
+           else float(np.nanpercentile(series.values, pct)))
     above = (series > thr).fillna(False).values
     n = len(above); ext = np.zeros(n, bool)
     i = 0
@@ -178,6 +179,35 @@ def label_extreme(series, pct=95, min_run=3):
         else:
             i += 1
     return pd.Series(ext, index=series.index), thr
+
+
+def label_extreme_by_split(series, train_end=2022, pct=95, min_run=3):
+    """Fit P95 on training years and label train/evaluation segments separately.
+
+    Separating the two segments prevents an above-threshold run from crossing
+    the train/evaluation boundary.  Evaluation values determine whether an
+    evaluation hour exceeds the frozen training threshold, but they never
+    participate in fitting that threshold.
+    """
+    years = series.index.year.to_numpy()
+    train = years <= int(train_end)
+    if not train.any():
+        raise ValueError(f"no observations at or before train_end={train_end}")
+    train_values = series.to_numpy()[train]
+    if not np.isfinite(train_values).any():
+        raise ValueError("training period contains no finite observations")
+    threshold = float(np.nanpercentile(train_values, pct))
+    labels = pd.Series(False, index=series.index)
+    for segment in (train, ~train):
+        if segment.any():
+            segment_labels, _ = label_extreme(
+                series.iloc[np.flatnonzero(segment)],
+                pct=pct,
+                min_run=min_run,
+                threshold=threshold,
+            )
+            labels.loc[segment_labels.index] = segment_labels
+    return labels, threshold
 
 
 def metrics(lst_ext, ta_ext):

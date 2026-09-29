@@ -76,6 +76,27 @@ Optional data-construction utilities require additional geospatial packages:
 pip install -r requirements-pipeline.txt
 ```
 
+## Default Temporal Protocol
+
+> **2015–2022 train / 2023–2025 evaluation**
+
+This is the default downstream benchmark split. Models and fitted preprocessing
+objects—including normalization statistics, missing-value fill values,
+climatologies, and event thresholds—must be fitted on 2015–2022 only and then
+frozen for evaluation on 2023–2025.
+
+The benchmark uses no additional temporal embargo by default. For forecasting
+and detection, an evaluation target at time `t` may use observations strictly
+before `t` as context, including late-2022 context for the first 2023 targets;
+evaluation targets are never used for training. See
+[`TEMPORAL_PROTOCOL.md`](TEMPORAL_PROTOCOL.md) for context-window, masking, and
+task-specific details.
+
+This split describes downstream benchmark fitting and evaluation. It does not
+retroactively change the construction history of released target products;
+product-specific construction years are documented in the Hugging Face dataset
+card and provenance records.
+
 ## License
 
 The code in this GitHub repository is released under the MIT License; see
