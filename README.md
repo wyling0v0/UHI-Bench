@@ -88,9 +88,8 @@ frozen for evaluation on 2023–2025.
 The benchmark uses no additional temporal embargo by default. For forecasting
 and detection, an evaluation target at time `t` may use observations strictly
 before `t` as context, including late-2022 context for the first 2023 targets;
-evaluation targets are never used for training. See
-[`TEMPORAL_PROTOCOL.md`](TEMPORAL_PROTOCOL.md) for context-window, masking, and
-task-specific details.
+evaluation targets are never used for training. Task-specific runners document
+their context-window and masking settings in code and output metadata.
 
 This split describes downstream benchmark fitting and evaluation. It does not
 retroactively change the construction history of released target products;
