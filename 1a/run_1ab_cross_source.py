@@ -9,7 +9,7 @@ This script answers the RQ1 bridge that the separate Task 2a/2b tables cannot:
    missing or sparse.
 
 The default is Munich, but the loader supports the 16 cities that have both
-LST-UHI and either HOStrADA Air-T UHI (DE8) or corrected ATUHI pseudo Air-T UHI
+LST-UHI and either HOStrADA Air-T UHI (DE8) or corrected model-derived Air-T UHI
 (Intl8).  Outputs are one JSON per city plus an optional batch summary table.
 """
 from __future__ import annotations
@@ -836,7 +836,7 @@ def main():
     ap.add_argument("--cities", nargs="+",
                     help="batch mode; default with --all_cities is the 16 two-source cities")
     ap.add_argument("--all_cities", action="store_true",
-                    help="run all 16 cities with both LST and Air-T/Pseudo-Air-T sources")
+                    help="run all 16 cities with both LST and observed/model-derived Air-T sources")
     ap.add_argument("--years", type=int, nargs="+", default=DEFAULTS["years"])
     ap.add_argument("--seed", type=int, default=DEFAULTS["seed"])
     ap.add_argument("--min_spatial_pixels", type=int, default=DEFAULTS["min_spatial_pixels"])

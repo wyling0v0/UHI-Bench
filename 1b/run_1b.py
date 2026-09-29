@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from common.paths import CACHE_ROOT, LST_BASE, PSEUDO_TA_BASE, TA_BASE  # noqa: E402
+from common.paths import CACHE_ROOT, LST_BASE, MODEL_DERIVED_TA_BASE, TA_BASE  # noqa: E402
 
 SERIES_CACHE = CACHE_ROOT / "1c_city_mean_series"
 SERIES_YEAR_CACHE = CACHE_ROOT / "1c_city_mean_series_year"
@@ -62,13 +62,13 @@ def ta_city_series(city, years):
         df = pd.concat([pd.read_parquet(f) for f in fs], ignore_index=True)
         df["datetime"] = pd.to_datetime(df["datetime"])
         return df.groupby("datetime")["uhi"].mean()
-    s = _v7_city_mean(PSEUDO_TA_BASE, city, years, channel=1)
+    s = _v7_city_mean(MODEL_DERIVED_TA_BASE, city, years, channel=1)
     if s is not None:
         return s
     fs = []
     for y in years:
-        fs += glob.glob(str(PSEUDO_TA_BASE / city / f"*{y}*.parquet"))
-    fs += glob.glob(str(PSEUDO_TA_BASE / city / "*.parquet"))   # catch non-yearly names
+        fs += glob.glob(str(MODEL_DERIVED_TA_BASE / city / f"*{y}*.parquet"))
+    fs += glob.glob(str(MODEL_DERIVED_TA_BASE / city / "*.parquet"))   # catch non-yearly names
     fs = sorted(set(fs))
     if not fs:
         return None

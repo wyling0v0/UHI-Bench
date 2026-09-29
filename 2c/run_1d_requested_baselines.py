@@ -6,7 +6,7 @@ Runs only the compact set requested for Table 21 completion:
   - XGBoost on base, +ERA5, +static, +ERA5+static engineered inputs
   - DLinear on base, +ERA5, +static, +ERA5+static inputs
 
-Targets can be Ta (Air-T UHI, HOSTRADA or corrected pseudo Air-T) and/or LST.
+Targets can be Ta (Air-T UHI, HOSTRADA or corrected model-derived Air-T) and/or LST.
 Results are merged into 2c/results/1d_forecast.json using the same method names
 that draft/generate_fm_result_tables.py reads.
 """

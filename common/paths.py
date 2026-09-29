@@ -1,7 +1,7 @@
 """Path configuration for the public UHI-Bench code release.
 
 Set ``UHI_BENCH_DATA`` to the root of the released dataset, for example a
-local clone/download of https://anonymous-hf.com/a/ybz41u8gi970/.
+local clone/download of https://huggingface.co/datasets/WyLing0v0/uhi-bench.
 If the variable is not set, the code tries common local locations next to this
 repository.
 """
@@ -35,8 +35,8 @@ CACHE_ROOT = Path(os.environ.get("UHI_BENCH_CACHE", OUTPUT_ROOT / "cache")).expa
 
 LST_BASE = DATA_ROOT / "lstuhi_1km_hourly"
 TA_BASE = DATA_ROOT / "hostrada_uhi"
-PSEUDO_TA_BASE = DATA_ROOT / "atuhi_ood_1km_hourly"
-ATUHI_BASE = PSEUDO_TA_BASE
+MODEL_DERIVED_TA_BASE = DATA_ROOT / "atuhi_ood_1km_hourly"
+ATUHI_BASE = MODEL_DERIVED_TA_BASE
 HOSTRADA_BASE = TA_BASE
 ERA5_BASE = DATA_ROOT / "temporal_weather"
 STATIC_BASE = DATA_ROOT / "static_features"

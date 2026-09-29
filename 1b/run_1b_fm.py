@@ -49,7 +49,7 @@ import pandas as pd
 BENCH = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BENCH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common.paths import CACHE_ROOT, ERA5_BASE, LST_BASE, PSEUDO_TA_BASE, STATIC_BASE, TA_BASE  # noqa: E402
+from common.paths import CACHE_ROOT, ERA5_BASE, LST_BASE, MODEL_DERIVED_TA_BASE, STATIC_BASE, TA_BASE  # noqa: E402
 from run_1b import lst_city_series, ta_city_series, label_extreme  # noqa: E402
 
 ERA5_CITY_CACHE = CACHE_ROOT / "1c_era5_city_mean"

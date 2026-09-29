@@ -16,7 +16,7 @@ from collections import namedtuple
 import numpy as np
 import pandas as pd
 
-from .paths import LST_BASE, PSEUDO_TA_BASE, STATIC_BASE, TA_BASE
+from .paths import LST_BASE, MODEL_DERIVED_TA_BASE, STATIC_BASE, TA_BASE
 
 Field = namedtuple("Field", "values xy_km feats feat_names times pixel_ids")
 
@@ -59,8 +59,8 @@ def ta_source_base(city: str) -> Path:
     """
     if has_hostrada_ta(city):
         return TA_BASE
-    if (PSEUDO_TA_BASE / city).exists():
-        return PSEUDO_TA_BASE
+    if (MODEL_DERIVED_TA_BASE / city).exists():
+        return MODEL_DERIVED_TA_BASE
     return TA_BASE
 
 
@@ -72,7 +72,7 @@ def _load_v7_ta_cache(city: str, years) -> Field | None:
     """Load dense v7 Ta-UHI cache when available.
 
     v7 caches are the canonical fast path used by DL/FMs. German HOSTRADA caches
-    store coordinates as metres in ``xy.npy``; international pseudo-Ta caches
+    store coordinates as metres in ``xy.npy``; international model-derived Air-T caches
     store kilometres in ``xy_km.npy``.
     """
     years = [int(y) for y in years]
@@ -172,7 +172,7 @@ def load_lst_field(city: str, years=range(2023, 2026)) -> Field:
     return Field(values, xy_km, feats, names, times, pixel_ids)
 
 
-def load_pseudo_ta_field(city: str, years=range(2023, 2026)) -> Field:
+def load_model_derived_ta_field(city: str, years=range(2023, 2026)) -> Field:
     """ATUHI-OOD AirT-UHI grid for non-German cities.
 
     Schema mirrors LST (`pixel_id`, `datetime`, `uhi`) and aligns directly to
@@ -180,7 +180,7 @@ def load_pseudo_ta_field(city: str, years=range(2023, 2026)) -> Field:
     source tree because these parquet files are large.
     """
     years = [int(y) for y in years]
-    base = PSEUDO_TA_BASE / city
+    base = MODEL_DERIVED_TA_BASE / city
     cached = _load_v7_ta_cache(city, years)
     if cached is not None:
         return cached
@@ -200,7 +200,7 @@ def load_pseudo_ta_field(city: str, years=range(2023, 2026)) -> Field:
     if not files:
         raise FileNotFoundError(f"no ATUHI-OOD parquet for {city} years={years}")
 
-    print(f"    [pseudo-ta] building dense field cache {cache.name} from {len(files)} files", flush=True)
+    print(f"    [model-derived-ta] building dense field cache {cache.name} from {len(files)} files", flush=True)
     frames = []
     for f in files:
         d = pd.read_parquet(f, columns=["pixel_id", "datetime", "uhi"])
@@ -240,8 +240,8 @@ def load_ta_field(city: str, years=range(2023, 2026)) -> Field:
     for y in years:
         files += sorted(glob.glob(os.path.join(TA_BASE, city, "monthly_uhi", f"uhi_{y}*.parquet")))
     if not files:
-        if (PSEUDO_TA_BASE / city).exists():
-            return load_pseudo_ta_field(city, years=years)
+        if (MODEL_DERIVED_TA_BASE / city).exists():
+            return load_model_derived_ta_field(city, years=years)
         raise FileNotFoundError(f"no HOSTRADA or ATUHI-OOD parquet for {city}")
     df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
     df["datetime"] = pd.to_datetime(df["datetime"])

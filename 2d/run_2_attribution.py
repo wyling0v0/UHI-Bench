@@ -313,7 +313,7 @@ def load_windowed_city_data(city: str, years: list[int], n_pixels: int, seed: in
     if target == "lst":
         label_kind = "LST_TRUE_MSG_1KM"
     else:
-        label_kind = "DE_TRUE_HOSTRADA" if city in DE_SOURCE else "INTL_PSEUDO_ATUHI_CORRECTED"
+        label_kind = "DE_TRUE_HOSTRADA" if city in DE_SOURCE else "INTL_MODEL_DERIVED_ATUHI_CORRECTED"
     return CityData(
         city=city,
         label_kind=label_kind,
@@ -346,7 +346,7 @@ def load_city_data(city: str, years: list[int], n_pixels: int, seed: int, target
         label_kind = "DE_TRUE_HOSTRADA"
     else:
         times, uhi = load_intl_target(city, years, pixel_ids)
-        label_kind = "INTL_PSEUDO_ATUHI_CORRECTED"
+        label_kind = "INTL_MODEL_DERIVED_ATUHI_CORRECTED"
     era5 = load_era5(city, years, pixel_ids, times)
     if len(times) != len(uhi) or len(times) != len(era5):
         raise ValueError(f"{city}: time length mismatch")
@@ -1022,7 +1022,7 @@ def main():
         "target": args.target,
         "cities": cities,
         "note": (
-            "DE8 true Ta is the core result; Intl8 corrected AtUHI is pseudo-label extension."
+            "DE8 reference Ta is the core result; Intl8 corrected AtUHI is a model-derived extension."
             if args.target == "ta" else
             "LST-UHI appendix uses MSG/TsHARP LST-UHI true surface-temperature target for all core 16 cities."
         ),

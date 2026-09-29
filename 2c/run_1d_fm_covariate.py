@@ -31,7 +31,7 @@ OUT = Path(__file__).parent / "results" / "1d_forecast.json"
 import sys
 sys.path.insert(0, str(BENCH))
 from common.data import _load_static  # noqa: E402
-from common.paths import ERA5_BASE, PSEUDO_TA_BASE, TA_BASE  # noqa: E402
+from common.paths import ERA5_BASE, MODEL_DERIVED_TA_BASE, TA_BASE  # noqa: E402
 
 HORIZONS = [1, 6, 12, 24, 48, 96]
 T_CTX = 168
@@ -57,7 +57,7 @@ def load_cache(city: str, years: list[int], pix: np.ndarray):
     if not _has_hostrada_cache(city, years):
         values, times = load_values_cache(city, years, pix)
         pixel_ids = pixel_ids_for_indices(city, years[0], pix)
-        covs, _ = _load_pseudo_era5_selected(city, years, pixel_ids, pd.DatetimeIndex(times))
+        covs, _ = _load_model_derived_era5_selected(city, years, pixel_ids, pd.DatetimeIndex(times))
         return values, covs[:, :, MET_KEEP], times
 
     uhi_parts, met_parts, time_parts = [], [], []
@@ -80,7 +80,7 @@ def load_cache(city: str, years: list[int], pix: np.ndarray):
 def load_values_cache(city: str, years: list[int], pix: np.ndarray):
     if not _has_hostrada_cache(city, years):
         pixel_ids = pixel_ids_for_indices(city, years[0], pix)
-        return _load_pseudo_values_selected(city, years, pixel_ids)
+        return _load_model_derived_values_selected(city, years, pixel_ids)
 
     uhi_parts, time_parts = [], []
     for y in years:
@@ -124,7 +124,7 @@ def load_static_for_indices(city: str, year: int, pix: np.ndarray):
 def fit_cov_stats_from_cache(city: str, years: list[int], pix: np.ndarray, sample_stride: int = 24):
     if not _has_hostrada_cache(city, years):
         pixel_ids = pixel_ids_for_indices(city, years[0], pix)
-        era, _ = _load_pseudo_era5_selected(city, years, pixel_ids, None)
+        era, _ = _load_model_derived_era5_selected(city, years, pixel_ids, None)
         return fit_cov_stats(era[::sample_stride, :, MET_KEEP])
 
     parts = []
@@ -148,9 +148,9 @@ def _ta_v7_dir(city: str, year: int) -> Path:
     host = TA_BASE / city / "cache" / f"v7_{int(year)}"
     if (host / "done.json").exists():
         return host
-    pseudo = PSEUDO_TA_BASE / city / "cache" / f"v7_{int(year)}"
-    if (pseudo / "done.json").exists():
-        return pseudo
+    model_derived = MODEL_DERIVED_TA_BASE / city / "cache" / f"v7_{int(year)}"
+    if (model_derived / "done.json").exists():
+        return model_derived
     return host
 
 
@@ -162,7 +162,7 @@ def _selected_cache_dir(city: str, years, pixel_ids: np.ndarray, kind: str,
         ti = pd.DatetimeIndex(time_index).asi8
         h.update(np.asarray([len(ti), int(ti[0]), int(ti[-1])], dtype=np.int64).tobytes())
     key = h.hexdigest()[:12]
-    return PSEUDO_TA_BASE / city / "cache" / f"bench_1d_{kind}_{years_key}_n{len(pixel_ids)}_{key}"
+    return MODEL_DERIVED_TA_BASE / city / "cache" / f"bench_1d_{kind}_{years_key}_n{len(pixel_ids)}_{key}"
 
 
 def _read_selected_parquet(path: Path, columns: list[str], pixel_ids: np.ndarray) -> pd.DataFrame:
@@ -178,7 +178,7 @@ def _year_hours(year: int) -> pd.DatetimeIndex:
     return pd.date_range(f"{int(year)}-01-01", f"{int(year) + 1}-01-01", freq="h")[:-1]
 
 
-def _load_pseudo_values_selected(city: str, years, pixel_ids: np.ndarray):
+def _load_model_derived_values_selected(city: str, years, pixel_ids: np.ndarray):
     pixel_ids = np.asarray(pixel_ids, dtype=np.int64)
     cache = _selected_cache_dir(city, years, pixel_ids, "ta_values")
     if ((cache / "done.json").exists() and (cache / "values.npy").exists()
@@ -190,7 +190,7 @@ def _load_pseudo_values_selected(city: str, years, pixel_ids: np.ndarray):
     cache.mkdir(parents=True, exist_ok=True)
     vals, times_parts = [], []
     for y in [int(v) for v in years]:
-        path = PSEUDO_TA_BASE / city / f"atuhi_ood_1km_hourly_{y}.parquet"
+        path = MODEL_DERIVED_TA_BASE / city / f"atuhi_ood_1km_hourly_{y}.parquet"
         df = _read_selected_parquet(path, ["datetime", "pixel_id", "uhi"], pixel_ids)
         df["datetime"] = pd.to_datetime(df["datetime"])
         idx = _year_hours(y)
@@ -212,7 +212,7 @@ def _load_pseudo_values_selected(city: str, years, pixel_ids: np.ndarray):
     return np.load(cache / "values.npy", mmap_mode="r"), times
 
 
-def _load_pseudo_era5_selected(city: str, years, pixel_ids: np.ndarray,
+def _load_model_derived_era5_selected(city: str, years, pixel_ids: np.ndarray,
                                time_index: pd.DatetimeIndex | None):
     pixel_ids = np.asarray(pixel_ids, dtype=np.int64)
     time_index = pd.DatetimeIndex(time_index) if time_index is not None else None
